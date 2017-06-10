@@ -1,5 +1,9 @@
 Feature: Check in and out of a building
 
+  Scenario: Register a building
+    When I register a new building
+    Then a new building should have been registered
+
   Scenario: A user can check into a building
     Given a building was registered
     When a user checks into the building

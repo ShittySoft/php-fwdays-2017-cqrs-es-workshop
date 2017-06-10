@@ -40,6 +40,28 @@ final class BuildingContext implements Context
     }
 
     /**
+     * @When I register a new building
+     */
+    public function iRegisterANewBuilding() : void
+    {
+        $this->building = Building::new('bar');
+    }
+
+    /**
+     * @Then a new building should have been registered
+     *
+     * @throws \Assert\AssertionFailedException
+     */
+    public function aNewBuildingShouldHaveBeenRegistered() : void
+    {
+        /* @var $event NewBuildingWasRegistered */
+        $event = $this->getNextRecordedEvent();
+
+        Assertion::isInstanceOf($event, NewBuildingWasRegistered::class);
+        Assertion::same($event->name(), 'bar');
+    }
+
+    /**
      * @Given a building was registered
      */
     public function aBuildingWasRegistered() : void
