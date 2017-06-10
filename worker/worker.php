@@ -21,6 +21,6 @@ call_user_func(function () {
     /* @var $sm ContainerInterface */
     $sm = require __DIR__ . '/../container.php';
 
-    (new Consumer(new BernardRouter($sm->get(CommandBus::class), new EventBus()), new EventDispatcher()))
+    (new Consumer(new BernardRouter($sm->get('immediate-command-bus'), new EventBus()), new EventDispatcher()))
         ->consume($sm->get(Queue::class));
 });

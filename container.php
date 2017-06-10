@@ -142,7 +142,7 @@ return new ServiceManager([
             return $eventStore;
         },
 
-        CommandBus::class                  => function (ContainerInterface $container) : CommandBus {
+        'immediate-command-bus'                  => function (ContainerInterface $container) : CommandBus {
             $commandBus = new CommandBus();
 
             $commandBus->utilize(new ServiceLocatorPlugin($container));
@@ -172,6 +172,27 @@ return new ServiceManager([
             $commandBus->utilize($transactionManager);
 
             return $commandBus;
+        },
+
+        CommandBus::class => function (ContainerInterface $container) : CommandBus {
+            $producer = $container->get(MessageProducer::class);
+
+            return new class ($producer) extends CommandBus {
+                /**
+                 * @var MessageProducer
+                 */
+                private $producer;
+
+                public function __construct(MessageProducer $producer)
+                {
+                    $this->producer = $producer;
+                }
+
+                public function dispatch($command) : void
+                {
+                    $this->producer->__invoke($command);
+                }
+            };
         },
 
         // ignore this - this is async stuff
