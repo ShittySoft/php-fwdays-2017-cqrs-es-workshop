@@ -8,6 +8,7 @@ use Building\Domain\DomainEvent\CheckInAnomalyDetected;
 use Building\Domain\DomainEvent\NewBuildingWasRegistered;
 use Building\Domain\DomainEvent\UserCheckedIn;
 use Building\Domain\DomainEvent\UserCheckedOut;
+use Building\Domain\Service\IsUserBanned;
 use Prooph\EventSourcing\AggregateRoot;
 use Rhumsaa\Uuid\Uuid;
 
@@ -42,8 +43,12 @@ final class Building extends AggregateRoot
         return $self;
     }
 
-    public function checkInUser(string $username)
+    public function checkInUser(string $username, IsUserBanned $isBanned)
     {
+        if ($isBanned->__invoke($username)) {
+            throw new \DomainException('GTFO');
+        }
+
         $anomalyDetected = \array_key_exists($username, $this->checkedInUsers);
 
         $this->recordThat(UserCheckedIn::with($this->uuid, $username));
