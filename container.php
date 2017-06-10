@@ -13,6 +13,7 @@ use Building\Domain\Aggregate\Building;
 use Building\Domain\Command;
 use Building\Domain\DomainEvent\CheckInAnomalyDetected;
 use Building\Domain\Repository\BuildingRepositoryInterface;
+use Building\Domain\Service\IsUserBanned;
 use Building\Infrastructure\Repository\BuildingRepository;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Driver\PDOSqlite\Driver;
@@ -202,11 +203,12 @@ return new ServiceManager([
         },
         Command\CheckInUser::class => function (ContainerInterface $container) : callable {
             $buildings = $container->get(BuildingRepositoryInterface::class);
+            $isBanned  = $container->get(IsUserBanned::class);
 
-            return function (Command\CheckInUser $command) use ($buildings) {
+            return function (Command\CheckInUser $command) use ($buildings, $isBanned) {
                 $buildings
                     ->get($command->buildingId())
-                    ->checkInUser($command->username());
+                    ->checkInUser($command->username(), $isBanned);
             };
         },
         Command\CheckOutUser::class => function (ContainerInterface $container) : callable {
@@ -249,5 +251,14 @@ return new ServiceManager([
                 )
             );
         },
+        IsUserBanned::class => function () : IsUserBanned {
+            return new class implements IsUserBanned
+            {
+                public function __invoke(string $username): bool
+                {
+                    return $username === 'realDonaldTrump';
+                }
+            };
+        }
     ],
 ]);
