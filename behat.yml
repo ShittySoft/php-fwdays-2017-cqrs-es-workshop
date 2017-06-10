@@ -1,0 +1,7 @@
+default:
+  suites:
+    building:
+      contexts:
+        - 'BuildingTest\Context\BuildingContext'
+      paths:
+        - 'features/check-in-check-out.feature'
