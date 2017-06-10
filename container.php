@@ -12,6 +12,8 @@ use Bernard\QueueFactory\PersistentFactory;
 use Building\Domain\Aggregate\Building;
 use Building\Domain\Command;
 use Building\Domain\DomainEvent\CheckInAnomalyDetected;
+use Building\Domain\DomainEvent\UserCheckedIn;
+use Building\Domain\DomainEvent\UserCheckedOut;
 use Building\Domain\Repository\BuildingRepositoryInterface;
 use Building\Infrastructure\Repository\BuildingRepository;
 use Doctrine\DBAL\Connection;
@@ -25,6 +27,7 @@ use Prooph\Common\Event\ActionEventListenerAggregate;
 use Prooph\Common\Event\ProophActionEventEmitter;
 use Prooph\Common\Messaging\FQCNMessageFactory;
 use Prooph\Common\Messaging\NoOpMessageConverter;
+use Prooph\EventSourcing\AggregateChanged;
 use Prooph\EventSourcing\EventStoreIntegration\AggregateTranslator;
 use Prooph\EventStore\Adapter\Doctrine\DoctrineEventStoreAdapter;
 use Prooph\EventStore\Adapter\Doctrine\Schema\EventStoreSchema;
@@ -32,6 +35,7 @@ use Prooph\EventStore\Adapter\PayloadSerializer\JsonPayloadSerializer;
 use Prooph\EventStore\Aggregate\AggregateRepository;
 use Prooph\EventStore\Aggregate\AggregateType;
 use Prooph\EventStore\EventStore;
+use Prooph\EventStore\Stream\StreamName;
 use Prooph\EventStoreBusBridge\EventPublisher;
 use Prooph\EventStoreBusBridge\TransactionManager;
 use Prooph\ServiceBus\Async\MessageProducer;
@@ -237,6 +241,46 @@ return new ServiceManager([
                         $event->buildingId(),
                         $event->username()
                     ));
+                },
+            ];
+        },
+        UserCheckedIn::class . '-projectors' => function (ContainerInterface $container) : array {
+            $eventStore = $container->get(EventStore::class);
+
+            return [
+                function (UserCheckedIn $event) {
+                    $file = __DIR__ . '/public/building-' . $event->aggregateId() . '.json';
+                    $users = [];
+
+                    if (file_exists($file)) {
+                        $users = json_decode(file_get_contents($file));
+                    }
+
+                    $users[] = $event->username();
+
+                    file_put_contents($file, json_encode(array_unique($users)));
+                },
+                function (AggregateChanged $event) use ($eventStore) {
+                    $events = $eventStore->loadEventsByMetadataFrom(
+                        new StreamName('event_stream'),
+                        ['aggregate_id' => $event->aggregateId()]
+                    );
+                    $users = [];
+
+                    foreach ($events as $recordedEvent) {
+                        if ($recordedEvent instanceof UserCheckedIn) {
+                            $users[$recordedEvent->username()] = null;
+                        }
+
+                        if ($recordedEvent instanceof UserCheckedOut) {
+                            unset($users[$recordedEvent->username()]);
+                        }
+                    }
+
+                    file_put_contents(
+                        __DIR__ . '/public/proper-building-' . $event->aggregateId() . '.json',
+                        json_encode(array_keys($users))
+                    );
                 },
             ];
         },
